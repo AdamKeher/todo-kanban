@@ -2,7 +2,7 @@
   "name": "ak74-todo-kanban",
   "displayName": "AK74: TODO.md Kanban Task Board",
   "description": "AK74: TODO.md Kanban Task Board - A collection of tools that help developers program efficiently. Forked from original Coddx. Some useful features like: Kanban Board to manage project tasks in TODO.md, generating multiple files from templates quickly.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "ak74",
   "license": "MIT",
   "homepage": "https://github.com/AdamKeher/coddx-alpha",

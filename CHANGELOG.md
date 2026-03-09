@@ -1,5 +1,26 @@
 # Change Log
 
+## [0.4.0] - 2026-03-10
+
+### Added
+- Added multiline task support, category colors and task highlighting.
+- Added sub categories and time stamps.
+- Enhanced task board with priorities, bug flags, nesting, and multi-select.
+- Added build support and automated VS Code extension packaging.
+- Added collapsible subcolumns, sub categories and improved styling to TaskBoard and TaskColumn.
+- Enhanced keyboard navigation with input focus checks and conditional task actions.
+- Added persistence to collapsed state for tasks, sub categories and task columns.
+- Ensure only a single instance of the Task Board is open.
+
+### Changed
+- Open Task Board in to the selected window and open with Archived section collapsed by default.
+- Enhanced task metadata handling.
+
+### Fixed
+- Fixed Task Board rendering crash due to undefined state.
+- Fixed data corruption in Task Board due to double-escaping of markdown content.
+- Fixed bugs preventing loading of the Task Board.
+
 ## [0.3.0] - 2021-05-24
 
 - Task title supports markdown now for styling, hyperlinks, simple html or even img tags.
