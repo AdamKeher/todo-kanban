@@ -2,7 +2,7 @@ import * as React from 'react';
 import styled from 'styled-components';
 import { Draggable } from 'react-beautiful-dnd';
 import TextareaAutosize from 'react-autosize-textarea';
-import { DragIcon } from './Helpers';
+import { DragIcon, isDoneColumn, isArchivedColumn } from './Helpers';
 import TaskMenu from './TaskMenu';
 import { parseInline } from 'marked';
 
@@ -96,6 +96,32 @@ const TaskContentArea = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 0; /* Prevent flex overflow */
+`;
+
+const TaskHeader = styled.div`
+  font-size: 0.85em;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 8px 10px 0px 10px;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  filter: brightness(1.2);
+
+  .header-icon {
+    font-size: 1.1em;
+    opacity: 0.9;
+  }
+  
+  .status-icons {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
 `;
 
 const TaskDisplay = styled.div`
@@ -223,12 +249,6 @@ const ActionIcon = styled.span<{ disabled?: boolean }>`
   }
 `;
 
-const TickMark = styled.span`
-  font-size: 1em;
-  color: #ddd;
-  margin-right: 3px;
-`;
-
 interface TaskProps {
   column: any;
   columnIndex: number;
@@ -314,8 +334,18 @@ export default memo(
 
     const contentLines = (task.content || '').split('\n');
     const title = contentLines[0];
-    const description = contentLines.slice(1).join('\n');
-    const hasDescription = description.trim().length > 0;
+    const descriptionLines = contentLines.slice(1);
+    const hasDescription = descriptionLines.some(line => {
+      const trimmed = line.trim();
+      return trimmed.length > 0 && 
+             !trimmed.startsWith('> Started:') && 
+             !trimmed.startsWith('> Completed:');
+    });
+
+    let displayTitle = title;
+    if (task.category && displayTitle.startsWith(task.category + ':')) {
+      displayTitle = displayTitle.substring(task.category.length + 1).trim();
+    }
 
     const toggleSubtask = (lineIdx: number) => {
       const lines = [...contentLines];
@@ -390,10 +420,24 @@ export default memo(
             </PrioritySidebar>
 
             <TaskContentArea>
+              {!isEditing && (
+                <TaskHeader>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className={`fas ${task.category ? 'fa-tag' : 'fa-tasks'} header-icon`} />
+                    {task.category || 'Task'}
+                  </div>
+                  <div className="status-icons">
+                    {isArchivedColumn(column.title) && (
+                      <i className="fas fa-folder header-icon" title="Archived" />
+                    )}
+                    {(task.done || isDoneColumn(column.title)) && (
+                      <i className="fas fa-check header-icon" title="Done" />
+                    )}
+                  </div>
+                </TaskHeader>
+              )}
               <TaskWrapper>
                 <MainRow>
-                  <TickMark>{column.title.indexOf('✓') >= 0 ? <i className="fas fa-check-circle" /> : ''}</TickMark>
-                  
                   {isEditing ? (
                     <StyledTextarea
                       placeholder="New Task"
@@ -423,7 +467,7 @@ export default memo(
                   ) : (
                     <>
                       <TaskDisplay
-                        dangerouslySetInnerHTML={{ __html: parseInline(title || '&nbsp;') }}
+                        dangerouslySetInnerHTML={{ __html: parseInline(displayTitle || '&nbsp;') }}
                       />
                       {hasDescription && (
                         <ToggleDescIcon onClick={toggleCollapsed}>

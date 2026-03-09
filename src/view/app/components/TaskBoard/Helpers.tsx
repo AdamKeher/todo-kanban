@@ -14,12 +14,20 @@ AK74 manages tasks and save them as TODO.md.
 
 `;
 
-const isDoneColumn = (columnName: string) => {
+export const isDoneColumn = (columnName: string) => {
   if (!columnName) {
     return false;
   }
   const lowerColName = columnName.toLowerCase();
-  return lowerColName.indexOf('[x]') >= 0 || lowerColName.indexOf('✓') >= 0 || lowerColName.indexOf('done') >= 0;
+  return lowerColName.indexOf('[x]') >= 0 || lowerColName.indexOf('✓') >= 0 || lowerColName.indexOf('done') >= 0 || lowerColName.indexOf('completed') >= 0;
+};
+
+export const isArchivedColumn = (columnName: string) => {
+  if (!columnName) {
+    return false;
+  }
+  const lowerColName = columnName.toLowerCase();
+  return lowerColName.indexOf('archive') >= 0 || lowerColName.indexOf('archived') >= 0;
 };
 
 export function getMarkdown(data) {
