@@ -13,6 +13,8 @@ Project Description
 
 ### In Progress
 
+- [ ] !bug ui: fix dragging tasks. When you grab the file with the side bar / gripper, it no longer reorders the task. You can still reorder columns, but you can grab and reorder sub categories or tasks anymore  
+  > Started: 3/10/2026, 1:52:24 AM  
 
 ### Done ✓
 
