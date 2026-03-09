@@ -2,6 +2,7 @@ import * as React from 'react';
 import styled from 'styled-components';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import Task, { TaskInterface } from './Task';
+import { updateTaskMetadata } from './Helpers';
 
 const { memo } = React;
 
@@ -134,13 +135,7 @@ export default memo(
                                 }
                               }}
                               onChangeTitle={(newTitle: string) => {
-                                t.content = newTitle;
-                                const categoryMatch = newTitle.match(/^([^:\s]+):/);
-                                if (categoryMatch) {
-                                  t.category = categoryMatch[1];
-                                } else {
-                                  delete t.category;
-                                }
+                                updateTaskMetadata(t, newTitle);
                                 onChangeTask(t.id, t);
                               }}
                               onDelete={(task: TaskInterface) => onDeleteTask(task, subCol.id)}

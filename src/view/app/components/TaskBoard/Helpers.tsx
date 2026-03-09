@@ -59,6 +59,33 @@ export function getMarkdown(data) {
   return (data.precontent || '') + md;
 }
 
+export function updateTaskMetadata(task: TaskInterface, title: string) {
+  task.content = title;
+  
+  const priorityMatch = title.match(/(!p[12])(?=\s|:|$)/);
+  if (priorityMatch) {
+    task.priority = priorityMatch[1];
+    task.content = task.content.replace(priorityMatch[1], '').trim();
+  } else {
+    delete task.priority;
+  }
+
+  const bugMatch = task.content.match(/(!bug)(?=\s|:|$)/);
+  if (bugMatch) {
+    task.isBug = true;
+    task.content = task.content.replace(bugMatch[1], '').trim();
+  } else {
+    delete task.isBug;
+  }
+
+  const categoryMatch = task.content.match(/^([^:\s]+)\s*:/);
+  if (categoryMatch) {
+    task.category = categoryMatch[1];
+  } else {
+    delete task.category;
+  }
+}
+
 export function parseMarkdown(md: string) {
   const output = {
     projectName: '',
@@ -121,22 +148,7 @@ export function parseMarkdown(md: string) {
         level
       };
       
-      const priorityMatch = title.match(/(!p[12])(\s|$)/);
-      if (priorityMatch) {
-        task.priority = priorityMatch[1];
-        task.content = title.replace(priorityMatch[1], '').trim();
-      }
-
-      const bugMatch = task.content.match(/(!bug)(\s|$)/);
-      if (bugMatch) {
-        task.isBug = true;
-        task.content = task.content.replace(bugMatch[1], '').trim();
-      }
-
-      const categoryMatch = task.content.match(/^([^:\s]+):/);
-      if (categoryMatch) {
-        task.category = categoryMatch[1];
-      }
+      updateTaskMetadata(task, title);
 
       output.tasks[id] = task;
       if (lastColName && output.columns[lastColName]) {
