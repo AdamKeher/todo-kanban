@@ -40,13 +40,15 @@ export function getMarkdown(data) {
       if (!task) {
         return;
       }
-      const indent = task.level === 1 ? '  ' : '';
+      const indent = '  '.repeat(task.level || 0);
       const content = task.content.trim();
       const lines = content.split('\n');
       
       lines.forEach((line, index) => {
         if (index === 0) {
-          md += indent + '- ' + (task.hasCheckbox === false ? '' : checkboxStr) + line + '  \n';
+          const priorityStr = task.priority ? task.priority + ' ' : '';
+          const bugStr = task.isBug ? '!bug ' : '';
+          md += indent + '- ' + (task.hasCheckbox === false ? '' : checkboxStr) + priorityStr + bugStr + line + '  \n';
         } else {
           md += indent + '  ' + line + '  \n';
         }
@@ -119,7 +121,19 @@ export function parseMarkdown(md: string) {
         level
       };
       
-      const categoryMatch = title.match(/^([^:\s]+):/);
+      const priorityMatch = title.match(/(!p[12])(\s|$)/);
+      if (priorityMatch) {
+        task.priority = priorityMatch[1];
+        task.content = title.replace(priorityMatch[1], '').trim();
+      }
+
+      const bugMatch = task.content.match(/(!bug)(\s|$)/);
+      if (bugMatch) {
+        task.isBug = true;
+        task.content = task.content.replace(bugMatch[1], '').trim();
+      }
+
+      const categoryMatch = task.content.match(/^([^:\s]+):/);
       if (categoryMatch) {
         task.category = categoryMatch[1];
       }

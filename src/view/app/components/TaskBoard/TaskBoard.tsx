@@ -29,7 +29,39 @@ export default function TaskBoard({ vscode, initialData }) {
   const [state, setState] = useState(data);
   const [currentSelectedFile, setCurrentSelectedFile] = useState(selectedFile);
   const [currentFileList, setCurrentFileList] = useState(fileArray);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const vscodeHelper = getVscodeHelper(vscode);
+
+  React.useEffect(() => {
+    const handleKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === 'n' && ev.altKey) {
+        // Implement new task shortcut if needed
+      }
+      if (ev.key === 'Delete' || ev.key === 'Backspace') {
+        if (selectedTaskIds.length > 0) {
+          const newState = { ...state };
+          selectedTaskIds.forEach(id => {
+            delete newState.tasks[id];
+            Object.keys(newState.columns).forEach(colId => {
+              newState.columns[colId].taskIds = newState.columns[colId].taskIds.filter(tid => tid !== id);
+            });
+          });
+          updateStateAndSave(newState);
+          setSelectedTaskIds([]);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTaskIds, state]);
+
+  const handleSelectTask = (taskId: string, multi: boolean) => {
+    if (multi) {
+      setSelectedTaskIds(prev => prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]);
+    } else {
+      setSelectedTaskIds([taskId]);
+    }
+  };
 
   React.useEffect(() => {
     const handleMessage = (event) => {
@@ -152,7 +184,31 @@ export default function TaskBoard({ vscode, initialData }) {
         }}
       />
       <DragDropContext
-        onDragEnd={({ destination, source, draggableId, type }) => {
+        onDragEnd={({ destination, source, draggableId, type, combine }) => {
+          if (combine) {
+            const newState = { ...state };
+            const sourceCol = newState.columns[source.droppableId];
+            const sourceTaskIds = Array.from(sourceCol.taskIds);
+            sourceTaskIds.splice(source.index, 1);
+            newState.columns[source.droppableId].taskIds = sourceTaskIds;
+
+            const targetTask = newState.tasks[combine.draggableId];
+            const draggedTask = newState.tasks[draggableId];
+            
+            // Nest the dragged task under the target task
+            draggedTask.level = (targetTask.level || 0) + 1;
+            
+            // Find target task index and insert after it
+            const destCol = newState.columns[combine.droppableId];
+            const destTaskIds = Array.from(destCol.taskIds);
+            const targetIdx = destTaskIds.indexOf(combine.draggableId);
+            destTaskIds.splice(targetIdx + 1, 0, draggableId);
+            newState.columns[combine.droppableId].taskIds = destTaskIds;
+
+            updateStateAndSave(newState);
+            return;
+          }
+
           if (!destination) {
             return;
           }
@@ -208,6 +264,9 @@ export default function TaskBoard({ vscode, initialData }) {
               taskIds: tasks
             };
 
+            const taskToUpdate = state.tasks[draggableId];
+            taskToUpdate.level = 0; // Reset level when moved normally (dragged out)
+
             const newState = {
               ...state,
               columns: {
@@ -235,6 +294,7 @@ export default function TaskBoard({ vscode, initialData }) {
           };
 
           const taskToUpdate = state.tasks[draggableId];
+          taskToUpdate.level = 0; // Reset level when moved normally (dragged out)
           updateTaskTimestamps(taskToUpdate, startcol.id, endcol.id);
 
           const newState = {
@@ -262,6 +322,8 @@ export default function TaskBoard({ vscode, initialData }) {
                     columnIndex={idx}
                     isLast={isLast}
                     allTasks={state.tasks} // Pass all tasks to the column
+                    selectedTaskIds={selectedTaskIds}
+                    onSelectTask={handleSelectTask}
                     onChangeTask={(id: string, newTask: TaskInterface) => {
                       const newState = {
                         ...state,
@@ -278,6 +340,24 @@ export default function TaskBoard({ vscode, initialData }) {
                       newState.columns[columnId].taskIds = newState.columns[columnId].taskIds.filter(
                         (taskId: string) => taskId !== task.id
                       );
+                      updateStateAndSave(newState);
+                    }}
+                    onBackwardsTask={(task: TaskInterface, columnId: string) => {
+                      const newState = { ...state };
+                      const columnKeys = Object.keys(newState.columns);
+                      const currentColumnIdx = columnKeys.indexOf(columnId);
+                      const prevColumnKey = columnKeys[currentColumnIdx - 1];
+                      
+                      if (!prevColumnKey) return;
+
+                      updateTaskTimestamps(task, columnId, prevColumnKey);
+
+                      // remove task from current column:
+                      newState.columns[columnId].taskIds = newState.columns[columnId].taskIds.filter(
+                        (taskId: string) => taskId !== task.id
+                      );
+                      // append task to the prev column:
+                      newState.columns[prevColumnKey].taskIds.unshift(task.id);
                       updateStateAndSave(newState);
                     }}
                     onInProgressTask={(task: TaskInterface, columnId: string) => {

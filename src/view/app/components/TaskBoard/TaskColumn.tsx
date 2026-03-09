@@ -56,15 +56,18 @@ interface ColumnProps {
   columnIndex: number;
   column: ColumnInterface;
   isLast: boolean;
+  selectedTaskIds: string[];
+  onSelectTask: (taskId: string, multi: boolean) => void;
   onChangeTask: (idx: string, task: any) => void;
   onDeleteTask: (task: TaskInterface, columnId: string) => void;
   onInProgressTask: (task: TaskInterface, columnId: string) => void;
+  onBackwardsTask: (task: TaskInterface, columnId: string) => void;
   onCompleteTask: (task: TaskInterface, columnId: string) => void;
   onMoveTask: (taskId: string, sourceColId: string, destColId: string, destIndex: number) => void;
 }
 
 export default memo(
-  ({ column, allTasks, columnIndex, isLast, onChangeTask, onDeleteTask, onInProgressTask, onCompleteTask, onMoveTask }: ColumnProps) => {
+  ({ column, allTasks, columnIndex, isLast, selectedTaskIds, onSelectTask, onChangeTask, onDeleteTask, onInProgressTask, onBackwardsTask, onCompleteTask, onMoveTask }: ColumnProps) => {
     const subCols = column.subColumns || [column];
 
     return (
@@ -91,7 +94,7 @@ export default memo(
               return (
                 <React.Fragment key={subCol.id}>
                   {showSubTitle && <SubTitle>{displayTitle}</SubTitle>}
-                  <Droppable droppableId={subCol.id} type="task">
+                  <Droppable droppableId={subCol.id} type="task" isCombineEnabled>
                     {(provided, snapshot) => (
                       <List ref={provided.innerRef} {...provided.droppableProps} isDraggingOver={snapshot.isDraggingOver}>
                         {tasks.map((t, i) => {
@@ -110,6 +113,8 @@ export default memo(
                               columnIndex={columnIndex}
                               task={t}
                               index={i}
+                              isSelected={selectedTaskIds.includes(t.id)}
+                              onSelect={onSelectTask}
                               canMoveUp={column.isGroup && canMoveUp}
                               canMoveDown={column.isGroup && canMoveDown}
                               onMoveUp={() => {
@@ -140,6 +145,7 @@ export default memo(
                               }}
                               onDelete={(task: TaskInterface) => onDeleteTask(task, subCol.id)}
                               onInProgress={(task: TaskInterface) => onInProgressTask(task, subCol.id)}
+                              onBackwards={(task: TaskInterface) => onBackwardsTask(task, subCol.id)}
                               onComplete={(task: TaskInterface) => onCompleteTask(task, subCol.id)}
                               onChangeTask={onChangeTask}
                             />

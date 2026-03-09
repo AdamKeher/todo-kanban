@@ -16,76 +16,139 @@ export interface TaskInterface {
   matched?: boolean;
   level?: number;
   category?: string;
+  priority?: string;
+  isBug?: boolean;
 }
 
-const getCategoryColor = (category?: string, isDragging?: boolean) => {
-  if (isDragging) return { bg: '#eef', fg: '#333', outline: '#aaf' };
-  if (!category) return { bg: '#333', fg: 'var(--vscode-tab-foreground)', outline: '#555' };
-
-  const catLower = category.toLowerCase();
-  if (catLower === 'bug' || catLower === 'fix') {
-    return { bg: '#e51400', fg: '#fff', outline: '#ff5f52' }; // Bright Red, lighter red outline
-  }
+const getCategoryColor = (category?: string) => {
+  if (!category) return { bg: '#333', fg: 'var(--vscode-tab-foreground)' };
 
   let hash = 0;
   for (let i = 0; i < category.length; i++) {
     hash = category.charCodeAt(i) + ((hash << 5) - hash);
   }
-
-  // Generate a hue from 0 to 360
   let h = Math.abs(hash) % 360;
-  
-  // Avoid the red/pink zone (approx 340 to 20) so 'bug'/'fix' stay unique
-  if (h > 340 || h < 20) {
-    h = (h + 40) % 360;
-  }
-
-  // Use consistent Saturation and Lightness for a professional, readable look with white text
-  return { 
-    bg: `hsl(${h}, 45%, 35%)`, 
-    fg: '#fff',
-    outline: `hsl(${h}, 70%, 60%)` // Lighter tint for the outline
-  };
+  return { bg: `hsl(${h}, 45%, 35%)`, fg: '#fff' };
 };
 
-const TaskContainer = styled.div<{ isDragging: boolean; category?: string }>`
+const TaskContainer = styled.div<{ isDragging: boolean; level?: number; isSelected?: boolean; category?: string }>`
   position: relative;
   border-radius: 4px;
-  margin-left: 5px;
+  margin-left: ${props => (props.level || 0) * 20 + 5}px;
   margin-bottom: 8px;
-  background-color: ${props => getCategoryColor(props.category, props.isDragging).bg};
-  color: ${props => getCategoryColor(props.category, props.isDragging).fg};
-  transition: all 0.2s ease;
-  overflow: visible; /* Changed from hidden to show shadow/scale */
-  border: none;
+  background-color: ${props => getCategoryColor(props.category).bg};
+  color: ${props => getCategoryColor(props.category).fg};
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  overflow: hidden;
+  border: ${props => props.isSelected ? '2px solid var(--vscode-focusBorder)' : '1px solid rgba(255,255,255,0.1)'};
+  box-shadow: ${props => props.isSelected ? '0 0 10px var(--vscode-focusBorder)' : 'none'};
   box-sizing: border-box;
-  z-index: 1;
+  z-index: ${props => props.isSelected ? 5 : 1};
+  display: flex;
+
+  ${props => (props.level || 0) > 0 && `
+    background-color: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+  `}
 
   &:hover {
-    filter: brightness(1.15);
-    transform: scale(1.02) translateY(-2px);
+    filter: brightness(1.1);
     box-shadow: 
-      0 0 0 5px ${props => getCategoryColor(props.category, props.isDragging).outline},
-      0 8px 16px rgba(0, 0, 0, 0.4);
+      ${props => props.isSelected ? '0 0 10px var(--vscode-focusBorder),' : ''}
+      0 4px 12px rgba(0, 0, 0, 0.5);
     z-index: 10;
+  }
+`;
+
+const PrioritySidebar = styled.div<{ priority?: string; isBug?: boolean }>`
+  width: 28px;
+  background: ${props => {
+    if (props.priority === '!p1') return '#e51400';
+    if (props.priority === '!p2') return '#d18e00';
+    if (props.isBug) return 'repeating-linear-gradient(45deg, #e51400, #e51400 6px, #ffffff 6px, #ffffff 12px)';
+    return '#555';
+  }};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 0;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0.8;
+  cursor: grab;
+  &:active {
+    cursor: grabbing;
   }
 `;
 
 const Handle = styled.span`
   display: flex;
-  margin-right: 5px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 2px;
+`;
+
+const TaskContentArea = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Prevent flex overflow */
 `;
 
 const TaskDisplay = styled.div`
   box-sizing: border-box;
   width: 100%;
-  padding: 3px 0 3px 0;
-  margin-bottom: 2px;
+  padding: 6px 0;
   background-color: inherit;
   color: inherit;
   border: 1px solid transparent;
   font-family: inherit;
   white-space: pre-wrap;
+  flex: 1;
+`;
+
+const DescriptionContainer = styled.div<{ isCollapsed: boolean }>`
+  padding: 6px 8px 8px 8px;
+  display: ${props => props.isCollapsed ? 'none' : 'block'};
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.1);
+`;
+
+const PriorityBadge = styled.span<{ priority: string }>`
+  padding: 2px;
+  border-radius: 3px;
+  font-size: 0.6em;
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ToggleDescIcon = styled.span`
+  margin-left: auto;
+  cursor: pointer;
+  padding: 2px 4px;
+  opacity: 0.6;
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+const CheckboxIcon = styled.span<{ checked: boolean }>`
+  margin-right: 6px;
+  cursor: pointer;
+  opacity: 0.8;
+  &:hover {
+    opacity: 1;
+  }
 `;
 
 const StyledTextarea = styled(TextareaAutosize)`
@@ -101,11 +164,15 @@ const StyledTextarea = styled(TextareaAutosize)`
 `;
 
 const ActionWrapper = styled.div`
-  display: none;
+  display: flex;
   justify-content: flex-end;
   padding: 4px 6px;
   background-color: rgba(0, 0, 0, 0.1);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  /* Reserving space to prevent layout jumping on hover */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 `;
 
 const TaskWrapper = styled.div`
@@ -117,7 +184,8 @@ const TaskWrapper = styled.div`
   }
   &:hover {
     ${ActionWrapper} {
-      display: flex;
+      opacity: 1;
+      visibility: visible;
     }
   }
 `;
@@ -127,12 +195,6 @@ const MainRow = styled.div`
   align-items: center;
   padding: 4px;
   padding-right: 8px;
-`;
-
-const CategoryIcon = styled.span`
-  margin-right: 6px;
-  font-size: 0.9em;
-  opacity: 0.9;
 `;
 
 const TaskTimestamps = styled.div`
@@ -172,9 +234,12 @@ interface TaskProps {
   columnIndex: number;
   task: TaskInterface;
   index: number;
+  isSelected?: boolean;
+  onSelect?: (taskId: string, multi: boolean) => void;
   onChangeTitle: (title: string) => void;
   onDelete: (task: TaskInterface) => void;
   onInProgress: (task: TaskInterface) => void;
+  onBackwards: (task: TaskInterface) => void;
   onComplete: (task: TaskInterface) => void;
   onChangeTask: (id: string, task: TaskInterface) => void;
   onMoveUp?: (task: TaskInterface) => void;
@@ -189,9 +254,12 @@ export default memo(
     columnIndex,
     task,
     index,
+    isSelected,
+    onSelect,
     onChangeTitle,
     onDelete,
     onInProgress,
+    onBackwards,
     onComplete,
     onChangeTask,
     onMoveUp,
@@ -202,6 +270,7 @@ export default memo(
     // mainKey is used to force re-render StyledTextarea as it doesn't auto re-render as expected.
     const [mainKey, setMainKey] = React.useState('key_' + Math.random());
     const [isEditing, setIsEditing] = React.useState(false);
+    const [isCollapsed, setIsCollapsed] = React.useState(true);
     const [menuActive, setMenuActive] = React.useState('');
     const inputRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
 
@@ -226,145 +295,234 @@ export default memo(
       return null;
     }
 
-    // console.log('column.title', column.title);
+    const contentLines = (task.content || '').split('\n');
+    const title = contentLines[0];
+    const description = contentLines.slice(1).join('\n');
+    const hasDescription = description.trim().length > 0;
+
+    const toggleSubtask = (lineIdx: number) => {
+      const lines = [...contentLines];
+      const line = lines[lineIdx];
+      if (line.includes('( )')) {
+        lines[lineIdx] = line.replace('( )', '(x)');
+      } else if (line.includes('(x)')) {
+        lines[lineIdx] = line.replace('(x)', '( )');
+      }
+      onChangeTask(task.id, { ...task, content: lines.join('\n') });
+    };
+
+    const handleKeyDown = (ev: React.KeyboardEvent) => {
+      if (isEditing) return;
+
+      switch (ev.key) {
+        case 'Enter':
+          setIsEditing(true);
+          ev.preventDefault();
+          break;
+        case ' ':
+          onSelect && onSelect(task.id, ev.ctrlKey || ev.metaKey || ev.shiftKey);
+          ev.preventDefault();
+          break;
+        case 'ArrowRight':
+          onInProgress(task);
+          break;
+        case 'ArrowLeft':
+          onBackwards(task);
+          break;
+        case 'Delete':
+        case 'Backspace':
+          onDelete(task);
+          break;
+      }
+    };
+
     return (
       <Draggable draggableId={task.id} index={index}>
         {(provided, snapshot) => (
           <TaskContainer
             {...provided.draggableProps}
-            // {...provided.dragHandleProps}
             ref={provided.innerRef}
             isDragging={snapshot.isDragging}
+            level={task.level}
+            isSelected={isSelected}
             category={task.category}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            onClick={(ev) => {
+              if (ev.detail === 2) { // Double click to edit
+                setIsEditing(true);
+              } else if (onSelect) {
+                onSelect(task.id, ev.ctrlKey || ev.metaKey || ev.shiftKey);
+              }
+            }}
           >
-            <TaskWrapper>
-              <MainRow>
-                <Handle {...provided.dragHandleProps}>
-                  <DragIcon />
-                </Handle>
-                <TickMark>{column.title.indexOf('✓') >= 0 ? <i className="fas fa-check-circle" /> : ''}</TickMark>
-                {(task.category?.toLowerCase() === 'bug' || task.category?.toLowerCase() === 'fix') && (
-                  <CategoryIcon title={task.category}>
-                    <i className="fas fa-bug" />
-                  </CategoryIcon>
+            <PrioritySidebar priority={task.priority} isBug={task.isBug}>
+              <Handle {...provided.dragHandleProps}>
+                <DragIcon />
+              </Handle>
+              {task.priority && (
+                <PriorityBadge priority={task.priority}>
+                  {task.priority.replace('!', '').toUpperCase()}
+                </PriorityBadge>
+              )}
+              {task.isBug && (
+                <PriorityBadge priority="!p1" style={{ backgroundColor: '#e51400' }}>
+                  BUG
+                </PriorityBadge>
+              )}
+            </PrioritySidebar>
+
+            <TaskContentArea>
+              <TaskWrapper>
+                <MainRow>
+                  <TickMark>{column.title.indexOf('✓') >= 0 ? <i className="fas fa-check-circle" /> : ''}</TickMark>
+                  
+                  {isEditing ? (
+                    <StyledTextarea
+                      placeholder="New Task"
+                      autoFocus={true}
+                      key={mainKey}
+                      ref={inputRef}
+                      onKeyDown={ev => {
+                        if (ev.keyCode === 13 && !ev.shiftKey) {
+                          ev.preventDefault(); // Enter (without Shift) finishes editing
+                          setIsEditing(false);
+                        }
+                      }}
+                      style={{ paddingLeft: task.level > 0 ? 10 : 0 }}
+                      onChange={(ev: any) => onChangeTitle(ev.target.value)}
+                      onFocus={() => {
+                        setIsEditing(true);
+                        setMenuActive('');
+                      }}
+                      onBlur={() => {
+                        if (menuActive === '' || menuActive === 'MENU') {
+                          setIsEditing(false);
+                        }
+                      }}
+                    >
+                      {task.content}
+                    </StyledTextarea>
+                  ) : (
+                    <>
+                      <TaskDisplay
+                        dangerouslySetInnerHTML={{ __html: parseInline(title || '&nbsp;') }}
+                      />
+                      {hasDescription && (
+                        <ToggleDescIcon onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}>
+                          <i className={`fas fa-chevron-${isCollapsed ? 'down' : 'up'}`} />
+                        </ToggleDescIcon>
+                      )}
+                    </>
+                  )}
+                </MainRow>
+
+                {!isEditing && !isCollapsed && hasDescription && (
+                  <DescriptionContainer isCollapsed={isCollapsed}>
+                    {contentLines.slice(1).map((line, idx) => {
+                      const lineIdx = idx + 1;
+                      const isChecklist = line.includes('( )') || line.includes('(x)');
+                      const isChecked = line.includes('(x)');
+                      const timestampLine = line.startsWith('> Started:') || line.startsWith('> Completed:');
+
+                      if (timestampLine) return null;
+
+                      return (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', margin: '4px 0' }}>
+                          {isChecklist && (
+                            <CheckboxIcon 
+                              checked={isChecked} 
+                              onClick={(e) => { e.stopPropagation(); toggleSubtask(lineIdx); }}
+                            >
+                              <i className={`far fa-${isChecked ? 'dot-circle' : 'circle'}`} />
+                            </CheckboxIcon>
+                          )}
+                          <span 
+                            style={{ opacity: timestampLine ? 0.6 : 1, fontStyle: timestampLine ? 'italic' : 'normal' }}
+                            dangerouslySetInnerHTML={{ __html: parseInline(line.replace(/\([ x]\)/, '').trim()) }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </DescriptionContainer>
+                )}
+
+                {(!isEditing && task.content && (task.content.includes('> Started:') || task.content.includes('> Completed:'))) && (
+                  <TaskTimestamps>
+                    {task.content.split('\n')
+                      .filter(line => line.startsWith('> Started:') || line.startsWith('> Completed:'))
+                      .map((line, idx) => (
+                        <span key={idx}>{line.replace('> ', '')}</span>
+                      ))
+                    }
+                  </TaskTimestamps>
                 )}
 
                 {isEditing ? (
-                  <StyledTextarea
-                    placeholder="New Task"
-                    autoFocus={true}
-                    key={mainKey}
-                    ref={inputRef}
-                    onKeyDown={ev => {
-                      if (ev.keyCode === 13 && !ev.shiftKey) {
-                        ev.preventDefault(); // Enter (without Shift) finishes editing
+                  <ActionWrapper>
+                    <ActionIcon
+                      data-type="action-icon"
+                      onMouseOver={() => setMenuActive('MENU')}
+                      onClick={() => {
+                        setMenuActive('');
                         setIsEditing(false);
-                      }
-                      // Shift + Enter will allow a new line by default
-                    }}
-                    style={{ paddingLeft: task.level > 0 ? 10 : 0 }}
-                    onChange={(ev: any) => onChangeTitle(ev.target.value)}
-                    onFocus={() => {
-                      setIsEditing(true);
-                      setMenuActive('');
-                    }}
-                    onClick={() => {
-                      setMenuActive('');
-                    }}
-                    onBlur={() => {
-                      if (menuActive === '' || menuActive === 'MENU') {
-                        // e.g. if user is focusing in EMOJI menu, don't exit out of editing:
-                        setIsEditing(false);
-                      }
-                    }}
-                  >
-                    {task.content}
-                  </StyledTextarea>
+                      }}
+                    >
+                      <i className="fas fa-bars" />
+                    </ActionIcon>
+                    {menuActive && (
+                      <TaskMenu
+                        task={task}
+                        menuActive={menuActive}
+                        setMenuActive={setMenuActive}
+                        onChangeTask={onChangeTask}
+                        setMainKey={setMainKey}
+                        setIsEditing={setIsEditing}
+                      />
+                    )}
+                  </ActionWrapper>
                 ) : (
-                  <TaskDisplay
-                    dangerouslySetInnerHTML={{ __html: parseInline(task.content || '&nbsp;') }}
-                    onClick={ev => {
-                      if (ev.target.tagName.toUpperCase() === 'A') {
-                        // user clicked on a hyperlink <a> tag, let it behaves normally.
-                      } else {
-                        setIsEditing(true);
-                      }
-                    }}
-                  />
+                  <ActionWrapper>
+                    {columnIndex > 0 && (
+                      <ActionIcon data-type="action-icon" onClick={() => onBackwards(task)}>
+                        <i className="fas fa-arrow-left" />
+                      </ActionIcon>
+                    )}
+                    {onMoveUp && (
+                      <ActionIcon
+                        data-type="action-icon"
+                        disabled={!canMoveUp}
+                        onClick={() => canMoveUp && onMoveUp(task)}
+                      >
+                        <i className="fas fa-chevron-up" />
+                      </ActionIcon>
+                    )}
+                    {onMoveDown && (
+                      <ActionIcon
+                        data-type="action-icon"
+                        disabled={!canMoveDown}
+                        onClick={() => canMoveDown && onMoveDown(task)}
+                      >
+                        <i className="fas fa-chevron-down" />
+                      </ActionIcon>
+                    )}
+                    {(!task.done || !column.isLast) && (
+                      <ActionIcon data-type="action-icon" onClick={() => onInProgress(task)}>
+                        <i className="fas fa-arrow-right" />
+                      </ActionIcon>
+                    )}
+                    {!task.done && (
+                      <ActionIcon data-type="action-icon" onClick={() => onComplete(task)}>
+                        <i className="fas fa-check" />
+                      </ActionIcon>
+                    )}
+                    <ActionIcon data-type="action-icon" onClick={() => onDelete(task)}>
+                      <i className="fas fa-times" />
+                    </ActionIcon>
+                  </ActionWrapper>
                 )}
-              </MainRow>
-
-              {(!isEditing && task.content && (task.content.includes('> Started:') || task.content.includes('> Completed:'))) && (
-                <TaskTimestamps>
-                  {task.content.split('\n')
-                    .filter(line => line.startsWith('> Started:') || line.startsWith('> Completed:'))
-                    .map((line, idx) => (
-                      <span key={idx}>{line.replace('> ', '')}</span>
-                    ))
-                  }
-                </TaskTimestamps>
-              )}
-
-              {isEditing ? (
-                <ActionWrapper>
-                  <ActionIcon
-                    data-type="action-icon"
-                    onMouseOver={() => setMenuActive('MENU')}
-                    onClick={() => {
-                      setMenuActive('');
-                      setIsEditing(false);
-                    }}
-                  >
-                    <i className="fas fa-bars" />
-                  </ActionIcon>
-                  {menuActive && (
-                    <TaskMenu
-                      task={task}
-                      menuActive={menuActive}
-                      setMenuActive={setMenuActive}
-                      onChangeTask={onChangeTask}
-                      setMainKey={setMainKey}
-                      setIsEditing={setIsEditing}
-                    />
-                  )}
-                </ActionWrapper>
-              ) : (
-                <ActionWrapper>
-                  {onMoveUp && (
-                    <ActionIcon
-                      data-type="action-icon"
-                      disabled={!canMoveUp}
-                      onClick={() => canMoveUp && onMoveUp(task)}
-                    >
-                      <i className="fas fa-chevron-up" />
-                    </ActionIcon>
-                  )}
-                  {onMoveDown && (
-                    <ActionIcon
-                      data-type="action-icon"
-                      disabled={!canMoveDown}
-                      onClick={() => canMoveDown && onMoveDown(task)}
-                    >
-                      <i className="fas fa-chevron-down" />
-                    </ActionIcon>
-                  )}
-                  {(!task.done || !column.isLast) && (
-                    <ActionIcon data-type="action-icon" onClick={() => onInProgress(task)}>
-                      <i className="fas fa-arrow-right" />
-                    </ActionIcon>
-                  )}
-                  {/* TODO: don't show Tick icon on the first column => need column index? */}
-                  {!task.done && (
-                    <ActionIcon data-type="action-icon" onClick={() => onComplete(task)}>
-                      <i className="fas fa-check" />
-                    </ActionIcon>
-                  )}
-                  <ActionIcon data-type="action-icon" onClick={() => onDelete(task)}>
-                    <i className="fas fa-times" />
-                  </ActionIcon>
-                </ActionWrapper>
-              )}
-            </TaskWrapper>
+              </TaskWrapper>
+            </TaskContentArea>
           </TaskContainer>
         )}
       </Draggable>
