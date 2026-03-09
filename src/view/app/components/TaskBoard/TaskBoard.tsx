@@ -38,6 +38,12 @@ export default function TaskBoard({ vscode, initialData }) {
 
   React.useEffect(() => {
     const handleKeyDown = (ev: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input or textarea
+      const target = ev.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
       if (ev.key === 'n' && ev.altKey) {
         // Implement new task shortcut if needed
       }

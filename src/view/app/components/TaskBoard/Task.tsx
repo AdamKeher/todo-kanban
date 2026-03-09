@@ -324,14 +324,14 @@ export default memo(
           ev.preventDefault();
           break;
         case 'ArrowRight':
-          onInProgress(task);
+          if (isSelected) onInProgress(task);
           break;
         case 'ArrowLeft':
-          onBackwards(task);
+          if (isSelected) onBackwards(task);
           break;
         case 'Delete':
         case 'Backspace':
-          onDelete(task);
+          if (isSelected) onDelete(task);
           break;
       }
     };
