@@ -13,7 +13,11 @@ Project Description
 
 ### In Progress
 
-- [ ] !bug ui: fix dragging tasks. When you grab the file with the side bar / gripper, it no longer reorders the task. You can still reorder columns, but you can grab and reorder sub categories or tasks anymore  
+- [ ] ui: fix dragging tasks. When you grab the file with the side bar / gripper, it no longer reliably reorders the task. When you grab a task, sometimes it moves, mostly when you grab and drag, it just highlights text in the task.  
+    
+  You can still reorder columns.  
+    
+  If you try to reorder the general subcategory, it will start to drag the entire column. You can't move the General (default) sub-category and a mouse cursor (/) symbol should be shown.  
   > Started: 3/10/2026, 1:52:24 AM  
 
 ### Done ✓
