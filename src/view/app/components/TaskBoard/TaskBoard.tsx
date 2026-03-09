@@ -16,6 +16,10 @@ const { useState } = React;
 
 const Columns = styled.div`
   display: flex;
+  align-items: flex-start;
+  padding: 10px 0;
+  overflow-x: auto;
+  min-height: calc(100vh - 100px);
 `;
 
 const selectedFile = (window && window['initialData'] ? window['initialData']['selectedFile'] : '') || 'TODO.md';
@@ -213,6 +217,35 @@ export default function TaskBoard({ vscode, initialData }) {
             return;
           }
           if (destination.droppableId === source.droppableId && destination.index === source.index) {
+            return;
+          }
+
+          if (type === 'subcolumn') {
+            const groupColId = source.droppableId.replace('subcolumns-', '');
+            const group = renderedColumns.find(g => g.id === groupColId);
+            if (!group || !group.subColumns) return;
+
+            const newSubColumns = Array.from(group.subColumns);
+            const [movedSubCol] = newSubColumns.splice(source.index, 1);
+            newSubColumns.splice(destination.index, 0, movedSubCol);
+
+            // Rebuild columnOrder
+            const newColumnOrder: string[] = [];
+            renderedColumns.forEach((g: any) => {
+                if (g.id === groupColId) {
+                    newSubColumns.forEach((sc: any) => newColumnOrder.push(sc.id));
+                } else if (g.isGroup) {
+                    g.subColumns.forEach((sc: any) => newColumnOrder.push(sc.id));
+                } else {
+                    newColumnOrder.push(g.id);
+                }
+            });
+
+            const newState = {
+                ...state,
+                columnOrder: newColumnOrder
+            };
+            updateStateAndSave(newState);
             return;
           }
 
