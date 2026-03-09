@@ -66,7 +66,7 @@
     "compile": "npm-run-all compile:*",
     "watch": "npm-run-all -p watch:*",
     "compile:extension": "rm -rf out && tsc --jsx react -p ./",
-    "compile:views": "webpack --mode development",
+    "compile:views": "set NODE_OPTIONS=--openssl-legacy-provider && webpack --mode development",
     "watch:extension": "tsc --jsx react -watch -p ./",
     "watch:views": "webpack --watch --mode development",
     "postinstall": "node ./node_modules/vscode/bin/install",

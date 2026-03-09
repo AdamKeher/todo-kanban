@@ -75,6 +75,12 @@ export default memo(
                       index={i}
                       onChangeTitle={(newTitle: string) => {
                         t.content = newTitle;
+                        const categoryMatch = newTitle.match(/^([^:\s]+):/);
+                        if (categoryMatch) {
+                          t.category = categoryMatch[1];
+                        } else {
+                          delete t.category;
+                        }
                         onChangeTask(t.id, t);
                       }}
                       onDelete={(task: TaskInterface) => onDeleteTask(task, column)}

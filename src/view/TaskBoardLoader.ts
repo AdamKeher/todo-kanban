@@ -125,7 +125,9 @@ export default class ViewLoader {
                     content="default-src 'none';
                              img-src https:;
                              script-src 'unsafe-eval' 'unsafe-inline' vscode-resource:;
-                             style-src vscode-resource: 'unsafe-inline';">
+                             style-src vscode-resource: 'unsafe-inline' https://cdnjs.cloudflare.com;
+                             font-src https://cdnjs.cloudflare.com;">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
         <script>
           window.acquireVsCodeApi = acquireVsCodeApi;
           window.initialData = { name: 'TaskBoard', path: \`${basePath}\`, dataString: \`${templateString}\`, fileList: \`${fileList}\`, selectedFile: \`${selectedFile}\` };

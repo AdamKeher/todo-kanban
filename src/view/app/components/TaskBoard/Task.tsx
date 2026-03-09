@@ -15,15 +15,60 @@ export interface TaskInterface {
   hasCheckbox?: boolean;
   matched?: boolean;
   level?: number;
+  category?: string;
 }
 
-const TaskContainer = styled.div<{ isDragging: boolean }>`
+const getCategoryColor = (category?: string, isDragging?: boolean) => {
+  if (isDragging) return { bg: '#eef', fg: '#333', outline: '#aaf' };
+  if (!category) return { bg: '#333', fg: 'var(--vscode-tab-foreground)', outline: '#555' };
+
+  const catLower = category.toLowerCase();
+  if (catLower === 'bug' || catLower === 'fix') {
+    return { bg: '#e51400', fg: '#fff', outline: '#ff5f52' }; // Bright Red, lighter red outline
+  }
+
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) {
+    hash = category.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  // Generate a hue from 0 to 360
+  let h = Math.abs(hash) % 360;
+  
+  // Avoid the red/pink zone (approx 340 to 20) so 'bug'/'fix' stay unique
+  if (h > 340 || h < 20) {
+    h = (h + 40) % 360;
+  }
+
+  // Use consistent Saturation and Lightness for a professional, readable look with white text
+  return { 
+    bg: `hsl(${h}, 45%, 35%)`, 
+    fg: '#fff',
+    outline: `hsl(${h}, 70%, 60%)` // Lighter tint for the outline
+  };
+};
+
+const TaskContainer = styled.div<{ isDragging: boolean; category?: string }>`
   position: relative;
   border-radius: 4px;
   margin-left: 5px;
   margin-bottom: 8px;
-  background-color: ${props => (props.isDragging ? '#eef' : '#333')};
-  transition: background 0.1s;
+  background-color: ${props => getCategoryColor(props.category, props.isDragging).bg};
+  color: ${props => getCategoryColor(props.category, props.isDragging).fg};
+  transition: all 0.2s ease;
+  overflow: hidden;
+  border: 0px solid transparent;
+
+  &:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+    border: 5px solid ${props => getCategoryColor(props.category, props.isDragging).outline};
+    margin-top: -5px;
+    margin-bottom: 3px;
+    margin-left: 0px;
+    margin-right: -5px;
+  }
 `;
 
 const Handle = styled.span`
@@ -37,9 +82,10 @@ const TaskDisplay = styled.div`
   padding: 3px 0 3px 0;
   margin-bottom: 2px;
   background-color: inherit;
-  color: var(--vscode-tab-foreground);
+  color: inherit;
   border: 1px solid transparent;
   font-family: inherit;
+  white-space: pre-wrap;
 `;
 
 const StyledTextarea = styled(TextareaAutosize)`
@@ -47,48 +93,53 @@ const StyledTextarea = styled(TextareaAutosize)`
   box-sizing: border-box;
   width: 100%;
   background-color: inherit;
-  color: var(--vscode-tab-foreground);
+  color: inherit;
   border: 1px solid transparent;
   margin-top: 1px;
   margin-bottom: 3px;
   font-family: inherit;
 `;
 
-// use "svg, [data-type='action-icon']" to hide the drag icon svg also.
+const ActionWrapper = styled.div`
+  display: none;
+  justify-content: flex-end;
+  padding: 4px 6px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
 const TaskWrapper = styled.div`
   display: flex;
-  align-items: center;
-  background-color: var(--vscode-tab-inactiveBackground);
-  padding-right: 4px;
+  flex-direction: column;
+  background-color: inherit;
   [draggable] {
     margin: 0;
   }
-  [data-type='action-icon'] {
-    visibility: hidden;
-  }
   &:hover {
-    [data-type='action-icon'] {
-      visibility: visible;
+    ${ActionWrapper} {
+      display: flex;
     }
   }
 `;
 
-const ActionWrapper = styled.div`
-  position: absolute;
-  right: 0;
-  padding: 2px;
+const MainRow = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  padding-right: 8px;
 `;
 
 const ActionIcon = styled.span`
-  font-size: 1em;
-  padding: 1px 5px;
-  margin: 0 2px;
+  font-size: 0.9em;
+  padding: 2px 6px;
+  margin: 0 3px;
   cursor: pointer;
-  background-color: #555;
-  color: #eee;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
   border-radius: 4px;
+  transition: background 0.1s;
   &:hover {
-    background-color: #777;
+    background-color: rgba(255, 255, 255, 0.3);
   }
 `;
 
@@ -158,57 +209,59 @@ export default memo(
             // {...provided.dragHandleProps}
             ref={provided.innerRef}
             isDragging={snapshot.isDragging}
+            category={task.category}
           >
             <TaskWrapper>
-              <Handle {...provided.dragHandleProps}>
-                <DragIcon />
-              </Handle>
-              <TickMark>{column.title.indexOf('✓') >= 0 ? '✓ ' : ''}</TickMark>
+              <MainRow>
+                <Handle {...provided.dragHandleProps}>
+                  <DragIcon />
+                </Handle>
+                <TickMark>{column.title.indexOf('✓') >= 0 ? '✓ ' : ''}</TickMark>
 
-              {isEditing ? (
-                <StyledTextarea
-                  placeholder="New Task"
-                  autoFocus={true}
-                  key={mainKey}
-                  ref={inputRef}
-                  onKeyDown={ev => {
-                    if (ev.keyCode === 13) {
-                      ev.preventDefault(); // in this Textarea, ignore Enter Key. Otherwise, it will be a linebreak.
-                      // inputRef.current.blur();
-                      setIsEditing(false);
-                    }
-                    // TODO: Ctrl or Cmd Enter to add the next task?
-                  }}
-                  style={{ paddingLeft: task.level > 0 ? 10 : 0 }}
-                  onChange={(ev: any) => onChangeTitle(ev.target.value)}
-                  onFocus={() => {
-                    setIsEditing(true);
-                    setMenuActive('');
-                  }}
-                  onClick={() => {
-                    setMenuActive('');
-                  }}
-                  onBlur={() => {
-                    if (menuActive === '' || menuActive === 'MENU') {
-                      // e.g. if user is focusing in EMOJI menu, don't exit out of editing:
-                      setIsEditing(false);
-                    }
-                  }}
-                >
-                  {task.content}
-                </StyledTextarea>
-              ) : (
-                <TaskDisplay
-                  dangerouslySetInnerHTML={{ __html: parseInline(task.content || '&nbsp;') }}
-                  onClick={ev => {
-                    if (ev.target.tagName.toUpperCase() === 'A') {
-                      // user clicked on a hyperlink <a> tag, let it behaves normally.
-                    } else {
+                {isEditing ? (
+                  <StyledTextarea
+                    placeholder="New Task"
+                    autoFocus={true}
+                    key={mainKey}
+                    ref={inputRef}
+                    onKeyDown={ev => {
+                      if (ev.keyCode === 13 && !ev.shiftKey) {
+                        ev.preventDefault(); // Enter (without Shift) finishes editing
+                        setIsEditing(false);
+                      }
+                      // Shift + Enter will allow a new line by default
+                    }}
+                    style={{ paddingLeft: task.level > 0 ? 10 : 0 }}
+                    onChange={(ev: any) => onChangeTitle(ev.target.value)}
+                    onFocus={() => {
                       setIsEditing(true);
-                    }
-                  }}
-                />
-              )}
+                      setMenuActive('');
+                    }}
+                    onClick={() => {
+                      setMenuActive('');
+                    }}
+                    onBlur={() => {
+                      if (menuActive === '' || menuActive === 'MENU') {
+                        // e.g. if user is focusing in EMOJI menu, don't exit out of editing:
+                        setIsEditing(false);
+                      }
+                    }}
+                  >
+                    {task.content}
+                  </StyledTextarea>
+                ) : (
+                  <TaskDisplay
+                    dangerouslySetInnerHTML={{ __html: parseInline(task.content || '&nbsp;') }}
+                    onClick={ev => {
+                      if (ev.target.tagName.toUpperCase() === 'A') {
+                        // user clicked on a hyperlink <a> tag, let it behaves normally.
+                      } else {
+                        setIsEditing(true);
+                      }
+                    }}
+                  />
+                )}
+              </MainRow>
 
               {isEditing ? (
                 <ActionWrapper>
@@ -220,7 +273,7 @@ export default memo(
                       setIsEditing(false);
                     }}
                   >
-                    ☰
+                    <i className="fas fa-bars" />
                   </ActionIcon>
                   {menuActive && (
                     <TaskMenu
@@ -237,17 +290,17 @@ export default memo(
                 <ActionWrapper>
                   {(!task.done || !column.isLast) && (
                     <ActionIcon data-type="action-icon" onClick={() => onInProgress(task)}>
-                      🡢
+                      <i className="fas fa-arrow-right" />
                     </ActionIcon>
                   )}
                   {/* TODO: don't show Tick icon on the first column => need column index? */}
                   {!task.done && (
                     <ActionIcon data-type="action-icon" onClick={() => onComplete(task)}>
-                      ✓
+                      <i className="fas fa-check" />
                     </ActionIcon>
                   )}
                   <ActionIcon data-type="action-icon" onClick={() => onDelete(task)}>
-                    ✕
+                    <i className="fas fa-times" />
                   </ActionIcon>
                 </ActionWrapper>
               )}

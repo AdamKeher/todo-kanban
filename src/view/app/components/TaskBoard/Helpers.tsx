@@ -59,17 +59,23 @@ export function getMarkdown(data) {
       checkboxStr = '[x] ';
     }
 
-    // for (let i = 0; i < col.taskIds.length; i += 1) {
-    //   const task = col.taskIds[i];
-    //   md += '[ ] ' + task.content + '\n';
-    // }
     col.taskIds.forEach((taskId: string) => {
       const task: TaskInterface = data.tasks[taskId];
       if (!task) {
         return;
       }
-      const indent = task.level === 1 ? '  - ' : '- ';
-      md += indent + (task.hasCheckbox === false ? '' : checkboxStr) + task.content.trim() + '  \n';
+      const indent = task.level === 1 ? '  ' : '';
+      const content = task.content.trim();
+      const lines = content.split('\n');
+      
+      lines.forEach((line, index) => {
+        if (index === 0) {
+          md += indent + '- ' + (task.hasCheckbox === false ? '' : checkboxStr) + line + '  \n';
+        } else {
+          // for multi-line tasks, indent the subsequent lines
+          md += indent + '  ' + line + '  \n';
+        }
+      });
     });
     md += '\n';
   }
@@ -89,17 +95,11 @@ export function parseMarkdown(md: string) {
   let lastColName = '';
   const lines = md.split('\n');
   let taskNum = 0;
+  let currentTask: TaskInterface | null = null;
 
   let listFound = false; // found after '### '
 
   lines.forEach(line => {
-    if (listFound === false) {
-      if (line.indexOf('# ') === 0) {
-        output.projectName = line.replace('# ', '').trim();
-      }
-      output.precontent += line.indexOf('### ') === 0 ? '' : line + '\n'; // append to precontent
-    }
-
     if (line.indexOf('### ') === 0) {
       listFound = true;
       lastColName = line.replace('### ', '').trim();
@@ -109,41 +109,68 @@ export function parseMarkdown(md: string) {
         taskIds: []
       };
       output.columnOrder.push(lastColName);
-      return;
-    }
-    if (!listFound) {
-      return;
-    }
-    if (line.trim().length === 0) {
+      currentTask = null;
       return;
     }
 
-    // after a List is found => Tasks come next:
-    taskNum++;
-    const id = `task${taskNum}`;
-    const hasCheckbox = line.indexOf('[ ]') >= 0 || line.indexOf('[x]') >= 0;
-    const level = line.indexOf('  - ') === 0 ? 1 : 0;
-    let title = line
-      .replace('  - [ ] ', '')
-      .replace('  - [x] ', '')
-      .replace('  - ', '')
-      .replace('- [ ] ', '')
-      .replace('- [x] ', '')
-      .trim();
-    if (title.indexOf('- ') === 0) {
-      title = title.slice(2); // remove '- '
+    if (listFound === false) {
+      if (line.indexOf('# ') === 0) {
+        output.projectName = line.replace('# ', '').trim();
+      }
+      output.precontent += line + '\n'; // append to precontent
+      return;
     }
-    const task: TaskInterface = {
-      id,
-      content: title,
-      hasCheckbox,
-      done: isDoneColumn(lastColName),
-      level
-    };
-    output.tasks[id] = task;
-    output.columns[lastColName].taskIds.push(id);
+
+    // Check if it's a new task
+    const isNewTask = line.trim().indexOf('- ') === 0 || line.trim().indexOf('* ') === 0;
+    
+    if (isNewTask) {
+      taskNum++;
+      const id = `task${taskNum}`;
+      const hasCheckbox = line.indexOf('[ ]') >= 0 || line.indexOf('[x]') >= 0;
+      const level = line.indexOf('  - ') === 0 || line.indexOf('  * ') === 0 ? 1 : 0;
+      let title = line
+        .replace('  - [ ] ', '')
+        .replace('  - [x] ', '')
+        .replace('  - ', '')
+        .replace('- [ ] ', '')
+        .replace('- [x] ', '')
+        .replace('  * [ ] ', '')
+        .replace('  * [x] ', '')
+        .replace('  * ', '')
+        .replace('* [ ] ', '')
+        .replace('* [x] ', '')
+        .trim();
+      
+      if (title.indexOf('- ') === 0) {
+        title = title.slice(2);
+      } else if (title.indexOf('* ') === 0) {
+        title = title.slice(2);
+      }
+
+      const task: TaskInterface = {
+        id,
+        content: title,
+        hasCheckbox,
+        done: isDoneColumn(lastColName),
+        level
+      };
+      
+      // Extract category
+      const categoryMatch = title.match(/^([^:\s]+):/);
+      if (categoryMatch) {
+        task.category = categoryMatch[1];
+      }
+
+      output.tasks[id] = task;
+      output.columns[lastColName].taskIds.push(id);
+      currentTask = task;
+    } else if (currentTask) {
+      // Append to current task (multi-line)
+      currentTask.content += '\n' + line.trim();
+    }
   });
-  // console.log('---- output', output);
+  
   return output;
 }
 
