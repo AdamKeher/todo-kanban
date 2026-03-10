@@ -1,5 +1,24 @@
 # Change Log
 
+## [0.4.1] - 2026-03-10
+
+### Added
+- **Magic Button (✨)** — AI-powered inline task refinement using VS Code's built-in language model API (`vscode.lm`). Works automatically with any active AI extension (GitHub Copilot, Gemini for VS Code, etc.) — no API key required. Click ✨ on any task to get a professional rewrite suggestion with Accept/Reject controls and a loading indicator.
+- **Activity Bar icon and sidebar** — Task Board now has a dedicated Activity Bar entry showing a live summary of all tasks by column (Todo, In Progress, Done, etc.) with real-time stats that update as tasks change.
+- **Nested checkboxes and rich text in task descriptions** — Task descriptions now render nested checklist items, bulleted lists (`- item`), and tab-indented content correctly.
+- **Column status icons in task headers** — Each task card displays a contextual icon (☐ Todo, ○ In Progress, ☑ Done, 🗄 Archived) matching its column.
+
+### Changed
+- **State persistence across sessions** — Task board UI state (collapsed columns, collapsed tasks, selected file) is now saved to VS Code's workspace state and restored on reopen, surviving extension restarts.
+- **Timestamps relocated** — Started/Completed timestamps moved from inside the description area to a dedicated footer bar below each task card, keeping the main content area clean.
+- **Improved task column header rendering** — Task category and type indicators in the task header are now driven by dedicated helper functions (`isTodoColumn`, `isInProgressColumn`, `isDoneColumn`, `isArchivedColumn`) for consistent display across all column types.
+- **Bumped minimum VS Code version** to `^1.90.0` and updated TypeScript target to `es2018` to support the `vscode.lm` language model API.
+
+### Fixed
+- **Blank webview on load** — Replaced deprecated `vscode-resource:` URI scheme with `webview.asWebviewUri()` and `webview.cspSource` so the webview script loads correctly in VS Code 1.90+.
+- **Task dragging reliability** — Resolved intermittent failures where tasks would snap back or not register a drop, and prevented sub-category header rows from being dragged.
+- **Task movement between grouped columns** — Fixed an issue where moving tasks into or out of grouped Todo sub-columns placed them in the wrong column.
+
 ## [0.4.0] - 2026-03-10
 
 ### Added
