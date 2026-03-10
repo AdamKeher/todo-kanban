@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check \"C:\\\\technical\\\\development\\\\vscode\\\\coddx-alpha\\\\configViewer\\\\configViewer.js\" 2>&1 | head -20)",
+      "Bash(node --check \"C:\\\\technical\\\\development\\\\vscode\\\\coddx-alpha\\\\out\\\\view\\\\TaskBoardLoader.js\" 2>&1)"
+    ]
+  }
+}
