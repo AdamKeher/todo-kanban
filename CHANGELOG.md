@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.4.2] - 2026-03-11
+
+### Added
+- **Create default TODO.md** — New command to quickly generate a `TODO.md` file from a template if one doesn't exist in the workspace.
+- **Improved task movement persistence** — The task board now tracks and restores the specific index and sub-category of a task when moving it between the board and the `TODO.md` file, ensuring tasks return to their exact previous position.
+
 ## [0.4.1] - 2026-03-10
 
 ### Added
