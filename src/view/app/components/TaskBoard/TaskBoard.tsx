@@ -124,7 +124,7 @@ export default function TaskBoard({ vscode, initialData }) {
     }
   });
 
-  const updateTaskTimestamps = (task: TaskInterface, sourceColId: string, destColId: string) => {
+  const updateTaskTimestamps = (task: TaskInterface, sourceColId: string, destColId: string, sourceIndex?: number) => {
     const now = new Date().toLocaleString();
     const isTodo = (id: string) => id.startsWith('Todo');
     const isDone = (id: string) => id.toLowerCase().indexOf('done') >= 0 || id.toLowerCase().indexOf('completed') >= 0 || id.toLowerCase().indexOf('cancelled') >= 0;
@@ -134,15 +134,15 @@ export default function TaskBoard({ vscode, initialData }) {
     let lines = task.content.split('\n');
     lines = lines.filter(line => !line.startsWith('> Started:') && !line.startsWith('> Completed:') && !line.startsWith('> Added:'));
     
-    // Handle Sub-Category tag
+    // Handle Sub-Category and Index tag
     if (isTodo(sourceColId) && !isTodo(destColId)) {
-      // Moving FROM Todo TO something else: Record source sub-category
-      // Filter out any existing sub-category tag first
-      lines = lines.filter(line => !line.startsWith('> Sub-Category:'));
-      lines.push(`> Sub-Category: ${sourceColId}`);
+      // Moving FROM Todo TO something else: Record source sub-category and index
+      // Filter out any existing sub-category or index tag first
+      lines = lines.filter(line => !line.startsWith('> Sub-Category:') && !line.startsWith('> Index:'));
+      lines.push(`> Sub-Category: ${sourceColId}${sourceIndex !== undefined ? ` (index: ${sourceIndex})` : ''}`);
     } else if (isTodo(destColId)) {
-      // Moving TO Todo: Remove sub-category tag
-      lines = lines.filter(line => !line.startsWith('> Sub-Category:'));
+      // Moving TO Todo: Remove tags
+      lines = lines.filter(line => !line.startsWith('> Sub-Category:') && !line.startsWith('> Index:'));
     }
 
     // If it already had a Started timestamp, we need to decide whether to keep it
@@ -347,7 +347,7 @@ export default function TaskBoard({ vscode, initialData }) {
 
           const taskToUpdate = state.tasks[draggableId];
           taskToUpdate.level = 0; // Reset level when moved normally (dragged out)
-          updateTaskTimestamps(taskToUpdate, startcol.id, endcol.id);
+          updateTaskTimestamps(taskToUpdate, startcol.id, endcol.id, source.index);
 
           const newState = {
             ...state,
@@ -408,7 +408,12 @@ export default function TaskBoard({ vscode, initialData }) {
                       if (!columnId.startsWith('Todo') && columnOrder[prevColumnIdx].startsWith('Todo')) {
                         const subCatLine = task.content.split('\n').find(l => l.startsWith('> Sub-Category:'));
                         if (subCatLine) {
-                          const targetColId = subCatLine.replace('> Sub-Category:', '').trim();
+                          let targetColId = subCatLine.replace('> Sub-Category:', '').trim();
+                          // Handle new format: "> Sub-Category: Todo (index: 1)"
+                          if (targetColId.includes('(index:')) {
+                            targetColId = targetColId.split('(index:')[0].trim();
+                          }
+                          
                           if (newState.columns[targetColId]) {
                             prevColumnIdx = newState.columnOrder.indexOf(targetColId);
                           } else {
@@ -436,14 +441,41 @@ export default function TaskBoard({ vscode, initialData }) {
                       const prevColumnKey = newState.columnOrder[prevColumnIdx];
                       if (!prevColumnKey) return;
 
-                      updateTaskTimestamps(task, columnId, prevColumnKey);
+                      // Check for index tag before updateTaskTimestamps removes it
+                      const lines = task.content.split('\n');
+                      const indexLine = lines.find(l => l.startsWith('> Index:'));
+                      const subCatLine = lines.find(l => l.startsWith('> Sub-Category:'));
+                      const sourceIndex = newState.columns[columnId].taskIds.indexOf(task.id);
+                      updateTaskTimestamps(task, columnId, prevColumnKey, sourceIndex);
 
                       // remove task from current column:
                       newState.columns[columnId].taskIds = newState.columns[columnId].taskIds.filter(
                         (taskId: string) => taskId !== task.id
                       );
-                      // append task to the prev column:
-                      newState.columns[prevColumnKey].taskIds.unshift(task.id);
+
+                      // Restore to correct index if it's moving to a Todo column
+                      if (prevColumnKey.startsWith('Todo')) {
+                        let targetIndex = NaN;
+                        if (indexLine) {
+                          targetIndex = parseInt(indexLine.replace('> Index:', '').trim());
+                        } else if (subCatLine && subCatLine.includes('(index:')) {
+                          const match = subCatLine.match(/\(index:\s*(\d+)\)/);
+                          if (match) {
+                            targetIndex = parseInt(match[1]);
+                          }
+                        }
+
+                        if (!isNaN(targetIndex)) {
+                          const taskIds = newState.columns[prevColumnKey].taskIds;
+                          const insertIdx = Math.min(Math.max(0, targetIndex), taskIds.length);
+                          taskIds.splice(insertIdx, 0, task.id);
+                        } else {
+                          newState.columns[prevColumnKey].taskIds.unshift(task.id);
+                        }
+                      } else {
+                        // append task to the prev column:
+                        newState.columns[prevColumnKey].taskIds.unshift(task.id);
+                      }
                       updateStateAndSave(newState);
                     }}
                     onInProgressTask={(task: TaskInterface, columnId: string) => {
@@ -467,7 +499,8 @@ export default function TaskBoard({ vscode, initialData }) {
                       const nextColumnKey = columnOrder[nextColumnIdx];
                       const doneColumnKey = columnOrder[columnOrder.length - 1];
                       
-                      updateTaskTimestamps(task, columnId, nextColumnKey);
+                      const sourceIndex = newState.columns[columnId].taskIds.indexOf(task.id);
+                      updateTaskTimestamps(task, columnId, nextColumnKey, sourceIndex);
 
                       if (nextColumnKey === doneColumnKey) {
                         task.done = true; // user moved this task to the right column and reached Done Column.
@@ -486,7 +519,8 @@ export default function TaskBoard({ vscode, initialData }) {
                       const columnOrder = newState.columnOrder;
                       const doneColumnKey = columnOrder[columnOrder.length - 1];
                       
-                      updateTaskTimestamps(task, columnId, doneColumnKey);
+                      const sourceIndex = newState.columns[columnId].taskIds.indexOf(task.id);
+                      updateTaskTimestamps(task, columnId, doneColumnKey, sourceIndex);
 
                       // remove task from current column:
                       newState.columns[columnId].taskIds = newState.columns[columnId].taskIds.filter(
@@ -519,7 +553,7 @@ export default function TaskBoard({ vscode, initialData }) {
                       };
 
                       const taskToMove = newState.tasks[taskId];
-                      updateTaskTimestamps(taskToMove, sourceColId, destColId);
+                      updateTaskTimestamps(taskToMove, sourceColId, destColId, taskIdx);
                       
                       updateStateAndSave(newState);
                     }}

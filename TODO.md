@@ -6,17 +6,19 @@ Project Description
 
 ### Todo
 
-- [ ] Track task index and sub-category when moving out of TODO  
-    
-  Record the task’s position in the list along with its `> Sub-Category:` tag when it’s moved out of the TODO column.    
-  When moving it back into TODO, restore it to the correct index within that sub‑category, handling bounds checking.  
 - [ ] ui: Add spell and grammar checking when editing a task  
 
 ### In Progress
 
-
 ### Done ✓
 
+- [x] task: Track task index and sub-category when moving out of TODO  
+    
+  Record the task’s position in the list along with its `> Sub-Category:` tag when it’s moved out of the TODO column.    
+  When moving it back into TODO, restore it to the correct index within that sub‑category, handling bounds checking.  
+  > Sub-Category: Todo  
+  > Started: 3/11/2026, 11:43:39 AM  
+  > Completed: 3/11/2026, 12:05:00 PM
 - [x] command: Add VSCode command to create default TODO.md  
   Add a command to the command palette that creates a TODO.md from `./template/TODO.md`; if `TODO.md` already exists in the current folder, name the new file `TODO.x.md` where x is the lowest number ensuring a unique filename in the project root.  
   > Sub-Category: Todo  
