@@ -4,3 +4,4 @@ node_modules
 # *.vsix
 
 configViewer/configViewer.js
+releases/
