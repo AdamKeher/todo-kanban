@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.4.3] - 2026-03-11
+
+### Added
+- **GitHub Actions workflow** — Automated release pipeline to package and publish the extension.
+
+### Fixed
+- **Build issues** — Resolved compilation and environment-related build errors.
+
 ## [0.4.2] - 2026-03-11
 
 ### Added
